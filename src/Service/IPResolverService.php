@@ -3,24 +3,22 @@
 namespace SilverStripe\LoginMonitor\Service;
 
 use GuzzleHttp\ClientInterface;
-use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injectable;
+use SilverStripe\LoginMonitor\State\GeoResult;
 
 /**
  * Resolves a given IP address and returns geographic information about it via the geoplugin.net API
  */
 class IPResolverService
 {
-    use Configurable;
     use Injectable;
 
     /**
      * The API endpoint to query, with a {ip} placeholder for the IP address
      *
-     * @config
      * @var string
      */
-    private static $endpoint = 'http://www.geoplugin.net/json.gp?ip={ip}';
+    const ENDPOINT = 'http://www.geoplugin.net/json.gp?ip={ip}';
 
     /**
      * @var string
@@ -42,11 +40,16 @@ class IPResolverService
         }
     }
 
+    /**
+     * @param string $ip
+     * @return GeoResult
+     * @throws \GuzzleHttp\Exception\GuzzleException
+     */
     public function resolve($ip)
     {
         $result = $this->client->request('GET', $this->getEndpoint($ip));
-
-        return $result;
+        $data = json_decode((string) $result->getBody(), true);
+        return GeoResult::create($data);
     }
 
     /**
@@ -57,8 +60,7 @@ class IPResolverService
      */
     protected function getEndpoint($ip)
     {
-        $template = (string) $this->config()->get('endpoint');
-        return str_replace('{ip}', (string) $ip, $template) ?: '';
+        return str_replace('{ip}', (string) $ip, self::ENDPOINT) ?: '';
     }
 
     /**
