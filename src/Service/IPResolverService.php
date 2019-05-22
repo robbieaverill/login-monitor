@@ -2,6 +2,7 @@
 
 namespace SilverStripe\LoginMonitor\Service;
 
+use GuzzleHttp\Client;
 use GuzzleHttp\ClientInterface;
 use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\LoginMonitor\State\GeoResult;
@@ -35,9 +36,10 @@ class IPResolverService
      */
     public function __construct(ClientInterface $client = null)
     {
-        if ($client) {
-            $this->setClient($client);
+        if (!$client) {
+            $client = new Client();
         }
+        $this->setClient($client);
     }
 
     /**

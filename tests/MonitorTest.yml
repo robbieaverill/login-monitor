@@ -1,0 +1,35 @@
+SilverStripe\Security\Member:
+  jo_bloggs:
+    FirstName: Jo
+    Surname: Bloggs
+    Email: jo@example.com
+
+SilverStripe\Security\LoginAttempt:
+  jo_1:
+    Status: Success
+    IP: 14.1.34.123
+    Member: =>SilverStripe\Security\Member.jo_bloggs
+  jo_2:
+    Status: Success
+    IP: 14.1.34.123
+    Member: =>SilverStripe\Security\Member.jo_bloggs
+  jo_3:
+    Status: Success
+    IP: 14.1.34.123
+    Member: =>SilverStripe\Security\Member.jo_bloggs
+  jo_4:
+    Status: Failure
+    IP: 14.1.34.123
+    Member: =>SilverStripe\Security\Member.jo_bloggs
+  jo_5:
+    Status: Success
+    IP: 14.1.34.123
+    Member: =>SilverStripe\Security\Member.jo_bloggs
+  jo_6:
+    Status: Success
+    IP: 14.1.34.123
+    Member: =>SilverStripe\Security\Member.jo_bloggs
+  jo_7:
+    Status: Failure
+    IP: 12.1.34.255
+    Member: =>SilverStripe\Security\Member.jo_bloggs
