@@ -4,8 +4,8 @@ namespace SilverStripe\LoginMonitor;
 
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injectable;
-use SilverStripe\LoginMonitor\Service\IPResolverService;
-use SilverStripe\LoginMonitor\State\GeoResult;
+use SilverStripe\LoginMonitor\State\LoginAttemptCollection;
+use SilverStripe\LoginMonitor\State\MemberLoginAttemptCollection;
 use SilverStripe\ORM\DataList;
 use SilverStripe\Security\LoginAttempt;
 
@@ -45,127 +45,39 @@ class Monitor
     private static $whitelisted_country_codes = [];
 
     /**
-     * @var IPResolverService
-     */
-    protected $ipResolver;
-
-    /**
      * @param DataList|LoginAttempt[] $loginAttempts
-     * @return GeoResult[]
+     * @return array
      */
     public function process(DataList $loginAttempts): array
     {
-        $results = $this->getListResults($loginAttempts);
+        $attemptCollection = LoginAttemptCollection::fromDataList($loginAttempts);
+        $memberIds = $loginAttempts->columnUnique('MemberID');
 
-        foreach ($results as $memberId => $result) {
+        $results = [];
+        foreach ($memberIds as $memberId) {
+            $attempts = $attemptCollection->forMember((int) $memberId);
+
+            $results[$memberId]['attempts'] = $attempts;
+
             // Get default country
-            $defaultCountryCode = $this->getDefaultCountryCode($result);
-            if (!$defaultCountryCode) {
+            $defaultCountryCode = $attempts->getDefaultCountryCode(
+                (int) $this->config()->get('minimum_login_attempts'),
+                (float) $this->config()->get('default_country_ratio')
+            );
+            if (empty($defaultCountryCode)) {
                 continue;
             }
+
             $results[$memberId]['default_country_code'] = $defaultCountryCode;
 
             // Find outliers not from that country
             $results[$memberId]['outliers'] = $this->identifyLoginsFromNonStandardLocations(
                 $defaultCountryCode,
-                $result['ips']
+                $attempts
             );
         }
 
         return $results;
-    }
-
-    /**
-     * Groups the list of LoginAttempts by member ID, then by IP, and produces a summary of successful and failed
-     * login attempt counts as well as a geographic information object for the IP's physical location.
-     *
-     * @param DataList $loginAttempts
-     * @return array
-     */
-    protected function getListResults(DataList $loginAttempts): array
-    {
-        $result = [];
-
-        $memberIds = $loginAttempts->columnUnique('MemberID');
-
-        foreach ($memberIds as $memberId) {
-            foreach ($loginAttempts as $loginAttempt) {
-                // Group by member ID
-                if ($loginAttempt->MemberID != $memberId) {
-                    continue;
-                }
-
-                // Create initial entry for member
-                if (!array_key_exists($memberId, $result)) {
-                    $result[$memberId] = [
-                        'total_success' => 0,
-                        'total_failure' => 0,
-                        'ips' => [],
-                    ];
-                }
-
-                $ip = $loginAttempt->IP;
-                // Create initial entry for IP on member
-                if (!array_key_exists($ip, $result[$memberId])) {
-                    $result[$memberId]['ips'][$ip] = [
-                        'success' => 0,
-                        'failure' => 0,
-                        'geo_information' => $this->getIPResolver()->resolve($ip),
-                    ];
-                }
-
-                // Allocate result to member and IP
-                if ($loginAttempt->Status === 'Success') {
-                    $result[$memberId]['total_success']++;
-                    $result[$memberId]['ips'][$ip]['success']++;
-                } else {
-                    $result[$memberId]['total_failure']++;
-                    $result[$memberId]['ips'][$ip]['failure']++;
-                }
-            }
-        }
-
-        return $result;
-    }
-
-    /**
-     * Given a grouped login attempt result set for a member, find the usual country code they login from
-     *
-     * @param array $result
-     * @return string       Returns empty string if the country code can not be obtained because of filtering rules or
-     *                      insufficient data set size
-     */
-    protected function getDefaultCountryCode(array $result): string
-    {
-        $maxLoginCount = 0;
-        $maxLoginFrom = null;
-        $minimumAttempts = (int) $this->config()->get('minimum_login_attempts');
-        $countryRatio = (int) $this->config()->get('default_country_ratio');
-
-        if ($minimumAttempts > $result['total_success']) {
-            // Cannot compute statistics, data set is not big enough
-            return '';
-        }
-
-        // Count successful login attempts per country
-        foreach ($result['ips'] as $ip => $ipResults) {
-            /** @var GeoResult $geoInfo */
-            $geoInfo = $ipResults['geo_information'];
-
-            if ($ipResults['success'] > $maxLoginCount) {
-                // Set a new max login count from
-                $maxLoginCount = $ipResults['success'];
-                $maxLoginFrom = $geoInfo->getCountryCode();
-            }
-        }
-
-        // Check country's successful login attempt count is high enough overall
-        if (($maxLoginCount / $result['total_success']) > $countryRatio) {
-            return $maxLoginFrom;
-        }
-
-        // The ratio of successful logins from this country is not high enough overall to determine it as a default
-        return '';
     }
 
     /**
@@ -185,31 +97,29 @@ class Monitor
      *
      * @param string $defaultCountryCode
      * @param array $attempts
-     * @return array
+     * @return LoginAttemptCollection[]
      */
-    protected function identifyLoginsFromNonStandardLocations($defaultCountryCode, $attempts): array
-    {
+    protected function identifyLoginsFromNonStandardLocations(
+        string $defaultCountryCode,
+        MemberLoginAttemptCollection $attempts
+    ): array {
         $outliers = [];
-        foreach ($attempts as $ip => $ipResults) {
-            /** @var GeoResult $geoInfo */
-            $geoInfo = $ipResults['geo_information'];
+        $processedIps = [];
+
+        foreach ($attempts->getAttemptCollection()->getAttempts() as $attempt) {
+            $ip = $attempt->getIP();
+            if (in_array($ip, $processedIps)) {
+                continue;
+            }
+
+            $processedIps[] = $ip;
+            $geoInfo = $attempt->getGeoResult();
 
             // Find attempts that were made from non-standard countries
             if ($geoInfo->getCountryCode() !== $defaultCountryCode) {
-                $outliers[$ip] = $ipResults;
+                $outliers[$ip] = $attempts->forIP($ip);
             }
         }
         return $outliers;
-    }
-
-    /**
-     * @return IPResolverService
-     */
-    protected function getIPResolver(): IPResolverService
-    {
-        if (!$this->ipResolver) {
-            $this->ipResolver = IPResolverService::create();
-        }
-        return $this->ipResolver;
     }
 }

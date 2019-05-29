@@ -4,7 +4,7 @@ namespace SilverStripe\LoginMonitor\Tests;
 
 use SilverStripe\Dev\SapphireTest;
 use SilverStripe\LoginMonitor\Monitor;
-use SilverStripe\LoginMonitor\State\GeoResult;
+use SilverStripe\LoginMonitor\State\MemberLoginAttemptCollection;
 use SilverStripe\Security\LoginAttempt;
 use SilverStripe\Security\Member;
 
@@ -23,22 +23,28 @@ class MonitorTest extends SapphireTest
         $this->assertArrayHasKey($memberId, $result);
         $memberResult = $result[$memberId];
 
-        $this->assertSame(5, $memberResult['total_success']);
-        $this->assertSame(2, $memberResult['total_failure']);
+        /** @var MemberLoginAttemptCollection $attempts */
+        $attempts = $memberResult['attempts'];
+        $this->assertInstanceOf(MemberLoginAttemptCollection::class, $attempts);
+        $this->assertSame(5, $attempts->getAttemptCollection()->getSuccessful());
+        $this->assertSame(2, $attempts->getAttemptCollection()->getFailed());
 
-        $this->assertArrayHasKey('14.1.34.123', $memberResult['ips']);
-        $this->assertArrayHasKey('12.1.34.255', $memberResult['ips']);
+        $this->assertNotEmpty($attempts->forIP('14.1.34.123'));
+        $this->assertNotEmpty($attempts->forIP('12.1.34.255'));
 
-        $this->assertSame(1, $memberResult['ips']['14.1.34.123']['success']);
-        $this->assertSame(0, $memberResult['ips']['14.1.34.123']['failure']);
-        $this->assertInstanceOf(GeoResult::class, $memberResult['ips']['14.1.34.123']['geo_information']);
-        $this->assertSame('New Zealand', $memberResult['ips']['14.1.34.123']['geo_information']->getCountryName());
+        $firstIP = $attempts->forIP('14.1.34.123');
+        $this->assertSame(5, $firstIP->getSuccessful());
+        $this->assertSame(1, $firstIP->getFailed());
+        $this->assertSame('New Zealand', $firstIP->getAttempts()[0]->getGeoResult()->getCountryName());
 
-        $this->assertSame('United States', $memberResult['ips']['12.1.34.255']['geo_information']->getCountryName());
+        $secondIP = $attempts->forIP('12.1.34.255');
+        $this->assertSame(0, $secondIP->getSuccessful());
+        $this->assertSame(1, $secondIP->getFailed());
+        $this->assertSame('United States', $secondIP->getAttempts()[0]->getGeoResult()->getCountryName());
 
         $this->assertArrayHasKey('outliers', $memberResult);
         $this->assertArrayHasKey('12.1.34.255', $memberResult['outliers']);
         $this->assertSame('NZ', $memberResult['default_country_code']);
-        $this->assertSame('US', $memberResult['outliers']['12.1.34.255']['geo_information']->getCountryCode());
+        $this->assertSame('US', $memberResult['outliers']['12.1.34.255']->getAttempts()[0]->getGeoResult()->getCountryCode());
     }
 }
