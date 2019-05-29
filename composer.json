@@ -10,6 +10,7 @@
         }
     ],
     "require": {
+        "php": ">=7.1.0",
         "silverstripe/framework": "^4.0",
         "guzzlehttp/guzzle": "^6.0"
     },

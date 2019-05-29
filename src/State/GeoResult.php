@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace SilverStripe\LoginMonitor\State;
 
@@ -27,9 +27,9 @@ class GeoResult
     /**
      * The IP for which the geographic information was requested
      *
-     * @return string|null
+     * @return string
      */
-    public function getIp()
+    public function getIp(): string
     {
         return $this->getData('request');
     }
@@ -39,7 +39,7 @@ class GeoResult
      *
      * @return int
      */
-    public function getStatus()
+    public function getStatus(): int
     {
         return (int) $this->getData('status');
     }
@@ -47,9 +47,9 @@ class GeoResult
     /**
      * City name, e.g. "Fort Lauderdale"
      *
-     * @return string|null
+     * @return string
      */
-    public function getCity()
+    public function getCity(): string
     {
         return $this->getData('city');
     }
@@ -57,9 +57,9 @@ class GeoResult
     /**
      * Region name, e.g. "Florida"
      *
-     * @return string|null
+     * @return string
      */
-    public function getRegion()
+    public function getRegion(): string
     {
         return $this->getData('region');
     }
@@ -67,9 +67,9 @@ class GeoResult
     /**
      * Region code, e.g. "FL"
      *
-     * @return string|null
+     * @return string
      */
-    public function getRegionCode()
+    public function getRegionCode(): string
     {
         return $this->getData('regionCode');
     }
@@ -77,9 +77,9 @@ class GeoResult
     /**
      * Country name, e.g. "United States"
      *
-     * @return string|null
+     * @return string
      */
-    public function getCountryName()
+    public function getCountryName(): string
     {
         return $this->getData('countryName');
     }
@@ -87,23 +87,23 @@ class GeoResult
     /**
      * Country code, e.g. "US"
      *
-     * @return string|null
+     * @return string
      */
-    public function getCountryCode()
+    public function getCountryCode(): string
     {
         return $this->getData('countryCode');
     }
 
     /**
      * @param string $item
-     * @return string|null
+     * @return string
      */
-    protected function getData($item)
+    protected function getData($item): string
     {
         $key = 'geoplugin_' . $item;
         if (isset($this->data[$key])) {
-            return $this->data[$key];
+            return (string) $this->data[$key];
         }
-        return null;
+        return '';
     }
 }

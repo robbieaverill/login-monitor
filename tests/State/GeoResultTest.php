@@ -13,6 +13,6 @@ class GeoResultTest extends SapphireTest
     public function testMissingDataReturnsNull()
     {
         $result = new GeoResult([]);
-        $this->assertNull($result->getCountryCode());
+        $this->assertEmpty($result->getCountryCode());
     }
 }

@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace SilverStripe\LoginMonitor\Service;
 
@@ -10,7 +10,7 @@ use SilverStripe\LoginMonitor\State\GeoResult;
 /**
  * Resolves a given IP address and returns geographic information about it via the geoplugin.net API
  */
-class IPResolverService
+class IPResolverService implements IPResolverInterface
 {
     use Injectable;
 
@@ -47,7 +47,7 @@ class IPResolverService
      * @return GeoResult
      * @throws \GuzzleHttp\Exception\GuzzleException
      */
-    public function resolve($ip)
+    public function resolve(string $ip): GeoResult
     {
         $result = $this->client->request('GET', $this->getEndpoint($ip));
         $data = json_decode((string) $result->getBody(), true);
@@ -60,7 +60,7 @@ class IPResolverService
      * @param string $ip
      * @return string
      */
-    protected function getEndpoint($ip)
+    protected function getEndpoint(string $ip): string
     {
         return str_replace('{ip}', (string) $ip, self::ENDPOINT) ?: '';
     }
@@ -69,7 +69,7 @@ class IPResolverService
      * @param ClientInterface $client
      * @return $this
      */
-    public function setClient(ClientInterface $client)
+    public function setClient(ClientInterface $client): IPResolverInterface
     {
         $this->client = $client;
         return $this;

@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace SilverStripe\LoginMonitor;
 
@@ -53,7 +53,7 @@ class Monitor
      * @param DataList|LoginAttempt[] $loginAttempts
      * @return GeoResult[]
      */
-    public function process(DataList $loginAttempts)
+    public function process(DataList $loginAttempts): array
     {
         $results = $this->getListResults($loginAttempts);
 
@@ -82,7 +82,7 @@ class Monitor
      * @param DataList $loginAttempts
      * @return array
      */
-    protected function getListResults(DataList $loginAttempts)
+    protected function getListResults(DataList $loginAttempts): array
     {
         $result = [];
 
@@ -132,10 +132,10 @@ class Monitor
      * Given a grouped login attempt result set for a member, find the usual country code they login from
      *
      * @param array $result
-     * @return string|false Returns false if the country code can not be obtained because of filtering rules or
+     * @return string       Returns empty string if the country code can not be obtained because of filtering rules or
      *                      insufficient data set size
      */
-    protected function getDefaultCountryCode(array $result)
+    protected function getDefaultCountryCode(array $result): string
     {
         $maxLoginCount = 0;
         $maxLoginFrom = null;
@@ -144,7 +144,7 @@ class Monitor
 
         if ($minimumAttempts > $result['total_success']) {
             // Cannot compute statistics, data set is not big enough
-            return false;
+            return '';
         }
 
         // Count successful login attempts per country
@@ -165,7 +165,7 @@ class Monitor
         }
 
         // The ratio of successful logins from this country is not high enough overall to determine it as a default
-        return false;
+        return '';
     }
 
     /**
@@ -187,7 +187,7 @@ class Monitor
      * @param array $attempts
      * @return array
      */
-    protected function identifyLoginsFromNonStandardLocations($defaultCountryCode, $attempts)
+    protected function identifyLoginsFromNonStandardLocations($defaultCountryCode, $attempts): array
     {
         $outliers = [];
         foreach ($attempts as $ip => $ipResults) {
@@ -205,7 +205,7 @@ class Monitor
     /**
      * @return IPResolverService
      */
-    protected function getIPResolver()
+    protected function getIPResolver(): IPResolverService
     {
         if (!$this->ipResolver) {
             $this->ipResolver = IPResolverService::create();
